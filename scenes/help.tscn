@@ -1,0 +1,71 @@
+[gd_scene load_steps=5 format=3 uid="uid://bik1gnm5jklu2"]
+
+[ext_resource type="Script" uid="uid://da6u2xpu6123r" path="res://scripts/help.gd" id="1_ci552"]
+[ext_resource type="FontFile" uid="uid://nr2pewfnnipp" path="res://assets/fonts/Xolonium-Regular.ttf" id="2_50phg"]
+[ext_resource type="Script" uid="uid://bgorub6g18q0n" path="res://scripts/help_label.gd" id="3_chmrd"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chmrd"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.6, 0.6, 0.6, 0)
+draw_center = false
+
+[node name="Help" type="Window"]
+transparent_bg = true
+oversampling_override = 1.0
+title = "Help"
+initial_position = 2
+size = Vector2i(440, 433)
+transient = true
+exclusive = true
+unresizable = true
+transparent = true
+popup_window = true
+sharp_corners = true
+max_size = Vector2i(440, 600)
+content_scale_mode = 1
+script = ExtResource("1_ci552")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.18039216, 0.3372549, 1, 0.63529414)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+clip_contents = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HelpLabel" type="RichTextLabel" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_fonts/normal_font = ExtResource("2_50phg")
+theme_override_font_sizes/normal_font_size = 28
+theme_override_font_sizes/bold_font_size = 30
+theme_override_styles/normal = SubResource("StyleBoxFlat_chmrd")
+bbcode_enabled = true
+text = "[b]WASD[/b]
+Move
+
+[b]Space / Enter[/b]
+Start Game
+
+[b]H[/b]
+Help
+
+[b]ESC / Q[/b]
+Close Games"
+fit_content = true
+autowrap_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("3_chmrd")
+
+[connection signal="close_requested" from="." to="." method="_on_close_requested"]

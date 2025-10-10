@@ -1,0 +1,64 @@
+# Siempre que se haga un push de etiqueta que coincida con el patrón "v*" se ejecuta el job
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  export_game:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    name: Export Game (Windows & Android)
+    steps:
+      # 1. Checkout del código
+      - name: checkout
+        uses: actions/checkout@v5
+    
+      # --- Configuración Específica de Android ---
+      
+      # 2. Configurar Java (necesario para la herramienta de Android)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Configurar Android SDK (necesario para la exportación de Godot a Android)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;34.0.0 platform-tools' 
+
+      # --- Exportación de Godot ---
+      
+      # 4. Exportar el juego para ambas plataformas
+      - name: export game (Windows & Android)
+        id: export
+        # Usar la última versión
+        uses: firebelley/godot-export@v7.0.0
+        with:
+          # Usamos la URL de Linux para el ejecutable de Godot, ya que el runner es `ubuntu-latest`.
+          # Las plantillas de exportación son las mismas.
+          godot_executable_download_url: https://downloads.tuxfamily.org/godotengine/4.5/Godot_v4.5-stable_linux.x86_64.zip
+          godot_export_templates_download_url: https://downloads.tuxfamily.org/godotengine/4.5/Godot_v4.5-stable_export_templates.tpz
+          relative_project_path: ./
+          archive_output: true
+          # **IMPORTANTE:** Define las plataformas que quieres exportar (los IDs deben coincidir con tus presets de Godot)
+          # El keystore y su contraseña (necesario para firmar el APK de Android) deben ser secretos
+        env:
+          android_keystore: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          android_keystore_alias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      # --- Creación del Release ---
+      
+      # 5. Crear el release con los artefactos de ambas exportaciones
+      - name: create release
+        uses: ncipollo/release-action@v1.18.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: true
+          tag: ${{ github.ref_name }}
+          # Adjunta todos los archivos creados en el directorio de salida del paso 'export'
+          artifacts: ${{ steps.export.outputs.archive_directory }}/*
