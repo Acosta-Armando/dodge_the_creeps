@@ -4,7 +4,12 @@ on:
       - "v*"
 jobs:
   export_game:
+    # ⚠️ We switch to using a Docker container for the whole job
     runs-on: ubuntu-latest
+    container:
+      # Use the image corresponding to your Godot version
+      # For Godot 4.5, use the latest '4-stable' tag or specify 4.x.y if available
+      image: barichello/godot-ci:4-stable 
     permissions:
       contents: write
     name: Export Game (Windows & Android)
@@ -12,69 +17,54 @@ jobs:
       # 1. Checkout del código
       - name: checkout
         uses: actions/checkout@v5
-
-      # 2. Configurar Java
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      # 3. Configurar Android SDK
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'build-tools;34.0.0 platform-tools'
-
-      # ************ NUEVO PASO CLAVE ************
-      # 4. Descargar y preparar las plantillas de Godot
-      # Esto es necesario para obtener la ruta al ejecutable de Godot.
-      - name: Download Godot and Export Templates
-        id: download_godot
-        uses: firebelley/godot-export@v7.0.0
-        with:
-          # Es fundamental que estas URLs coincidan con la versión
-          godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
-          godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
-          # No exportamos todavía, solo preparamos los archivos.
-          presets_to_export: "" 
-          
-      # 5. Instalar la plantilla de compilación de Android
-      # Usa el ejecutable recién descargado para crear la carpeta 'android/build'
-      - name: Install Android Build Template (Manual)
-        run: |
-          # 1. Obtenemos la ruta del ejecutable de Godot de la salida de la acción anterior
-          GODOT_EXEC=${{ steps.download_godot.outputs.godot_executable }}
-          
-          # 2. Ejecutamos el Godot en modo sin ventana para instalar la plantilla
-          # Esto crea la carpeta 'android/build'
-          echo "Installing Android build template using: $GODOT_EXEC"
-          $GODOT_EXEC --no-window --path ${{ github.workspace }} --android-export-build
-        
-      # ************ FIN DE PASOS CLAVE ************
       
-      # 6. Exportar el juego (Ahora SÍ con las plantillas en su sitio)
+      # 2. Setup Godot (This is usually just moving templates inside the container)
+      # This step is often needed to correctly set up the environment paths
+      - name: Setup Godot Environment
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          # Move the pre-installed templates from the container's root to the user path
+          mv /root/.local/share/godot/export_templates/* ~/.local/share/godot/export_templates/
+          
+      # 3. Export Game (Windows & Android)
+      # This single step handles the export and the Android build template installation
       - name: export game (Windows & Android)
         id: export
-        uses: firebelley/godot-export@v7.0.0
-        with:
-          # Usamos la misma acción, pero ahora SÍ para exportar
-          godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
-          godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
-          relative_project_path: ./
-          cache: true
-          archive_output: true
-          presets_to_export: Windows Desktop, Android # AHORA SÍ EXPORTA
+        run: |
+          # The Godot command will automatically install the Android build template 
+          # into the project's 'android/build' folder when it runs the first export.
+          
+          # The Android Keystore secrets are passed as environment variables 
+          # to the Godot process.
+          
+          # Export for Windows Desktop (ZIP)
+          godot --no-window --export-release "Windows Desktop" /__work/output/Windows.zip
+          
+          # Export for Android (APK/AAB)
+          godot --no-window --export-release "Android" /__work/output/Android.apk
         env:
-          android_keystore: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          android_keystore_alias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          # Define the output directory inside the container's temporary space
+          GODOT_EXPORT_DIR: /__work/output
+          
+          # Pass Android secrets directly as Godot uses them from ENV
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
-      # 7. Crear el Release
+      # 4. Upload/Save Artifacts
+      # The export files are located outside the checkout path, so we use actions/upload-artifact
+      - name: Upload Exported Files as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-exports
+          path: /__work/output/ # This path is defined in the previous step
+          
+      # 5. Crear el Release
       - name: create release
         uses: ncipollo/release-action@v1.18.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
           tag: ${{ github.ref_name }}
-          artifacts: ${{ steps.export.outputs.archive_directory }}/*
+          # Attach the artifacts uploaded in the previous step
+          artifacts: /__work/output/*
