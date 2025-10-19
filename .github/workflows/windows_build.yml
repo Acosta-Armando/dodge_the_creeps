@@ -1,0 +1,33 @@
+on:
+  workflow_call:
+
+jobs:
+  export_game:
+    runs-on: ubuntu-latest
+    # Ya no necesitas 'contents: write' aquí porque el release se hace en otro workflow
+    # permissions:
+    #   contents: write 
+    name: Export to Windows Job
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+
+      # --- Exportación de Godot ---
+      - name: export game (Windows)
+        id: export
+        uses: firebelley/godot-export@v7.0.0
+        with:
+          presets_to_export: "Windows Desktop"
+          godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
+          godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
+          relative_project_path: ./
+          archive_output: true
+
+      # --- Subida del Artefacto (PASO CLAVE) ---
+      # Sube los archivos exportados para que el workflow principal pueda descargarlos
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-windows-build # Usa este nombre en el workflow principal para descargar
+          path: ${{ steps.export.outputs.archive_directory }}/*
+          retention-days: 1 # O el tiempo que desees que se conserve el artefacto
