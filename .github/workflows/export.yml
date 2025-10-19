@@ -31,36 +31,48 @@ jobs:
 
       # --- Exportación de Godot ---
       
-      # 4. Exportar el juego para ambas plataformas
-      - name: export game (Windows & Android)
-        id: export
+      # 4. Descargar Godot y Plantillas
+      # Esta ejecución garantiza que las plantillas se descarguen antes de intentar instalarlas.
+      - name: Download Godot Templates
         uses: firebelley/godot-export@v7.0.0
         with:
           godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
           godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
           relative_project_path: ./
-          archive_output: true
-          android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          android_keystore_alias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        pre_export_script: |
-          # La acción ya descargó y descomprimió las plantillas al inicio.
-          # Obtiene la ruta del directorio de plantillas de exportación.
-          # Nota: godot-export crea una carpeta con el nombre de la versión
+          # No exportamos nada aquí, solo descargamos ejecutables y plantillas.
+      
+      # 5. Instalar Template de Construcción de Android
+      # ⭐ ESTE PASO REEMPLAZA a 'pre_export_script' y evita el error.
+      - name: Install Android Build Template
+        run: |
+          # Define la ruta de la versión de las plantillas (ajusta si la versión cambia)
           TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/4.5.stable"
-
-          # La ruta exacta del archivo template
           ANDROID_TEMPLATE_PATH="$TEMPLATES_DIR/android_source.zip"
-
+          
           echo "Instalando Android build template en android/build..."
           mkdir -p android/build
           # Descomprime el template en el lugar correcto
           unzip -q "$ANDROID_TEMPLATE_PATH" -d android/build
           echo "Instalación completada."
+        
+      # 6. Exportar el juego (solo ejecuta la exportación ya que los archivos ya están descargados/instalados)
+      - name: Export game (Windows & Android)
+        id: export
+        uses: firebelley/godot-export@v7.0.0
+        with:
+          # Vuelve a incluir las URLs, aunque la acción usa la cache si ya las tiene
+          godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
+          godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
+          relative_project_path: ./
+          archive_output: true
+          # Secrets para la firma del APK
+          android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          android_keystore_alias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
       # --- Creación del Release ---
       
-      # 5. Crear el release con los artefactos de ambas exportaciones
+      # 7. Crear el release con los artefactos de ambas exportaciones
       - name: create release
         uses: ncipollo/release-action@v1.18.0
         with:
