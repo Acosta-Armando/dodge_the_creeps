@@ -29,31 +29,9 @@ jobs:
         with:
           packages: 'build-tools;34.0.0 platform-tools'
 
-      # 4. Descargar y preparar los ejecutables de Godot y las plantillas
-      - name: Setup Godot for Template Installation
-        uses: firebelley/godot-export@v7.0.0
-        with:
-          godot_executable_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
-          godot_export_templates_download_url: https://master.dl.sourceforge.net/project/godot-engine.mirror/4.5-stable/Godot_v4.5-stable_export_templates.tpz
-          relative_project_path: ./
-          # Solo descarga, no exporta todavía
-          
-      # 🚀 ✅ NUEVO PASO: Instalar el template de construcción de Android
-      - name: Install Android Build Template
-        run: |
-          # El paso anterior descargó las plantillas. Ahora las copiamos al proyecto.
-          TEMPLATES_DIR=$(echo "$HOME/.local/share/godot/export_templates"/* | head -n 1)
-          ANDROID_TEMPLATE_PATH="$TEMPLATES_DIR/android_source.zip"
-        
-          echo "Copiando template de $ANDROID_TEMPLATE_PATH"
-          mkdir -p android/build
-          unzip -q "$ANDROID_TEMPLATE_PATH" -d android/build
-          echo "Contenido de android/build:"
-          ls -R android/build
-
       # --- Exportación de Godot ---
       
-      # 5. Exportar el juego para ambas plataformas
+      # 4. Exportar el juego para ambas plataformas
       - name: export game (Windows & Android)
         id: export
         uses: firebelley/godot-export@v7.0.0
@@ -65,6 +43,20 @@ jobs:
           android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           android_keystore_alias: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        pre_export_script: |
+          # La acción ya descargó y descomprimió las plantillas al inicio.
+          # Obtiene la ruta del directorio de plantillas de exportación.
+          # Nota: godot-export crea una carpeta con el nombre de la versión
+          TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/4.5.stable"
+
+          # La ruta exacta del archivo template
+          ANDROID_TEMPLATE_PATH="$TEMPLATES_DIR/android_source.zip"
+
+          echo "Instalando Android build template en android/build..."
+          mkdir -p android/build
+          # Descomprime el template en el lugar correcto
+          unzip -q "$ANDROID_TEMPLATE_PATH" -d android/build
+          echo "Instalación completada."
 
       # --- Creación del Release ---
       
