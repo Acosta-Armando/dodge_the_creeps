@@ -6,27 +6,27 @@ on:
 jobs:
   windows-build:
     name: 🏁 Windows
-    uses: ./.github/workflows/windows_builds.yml
+    uses: ./.github/workflows/windows_build.yml
 
   # android-build:
   #   name: 🤖 Android
-  #   uses: ./.github/workflows/android_builds.yml
+  #   uses: ./.github/workflows/android_build.yml
 
   # ios-build:
   #   name: 🍏 iOS
-  #   uses: ./.github/workflows/ios_builds.yml
+  #   uses: ./.github/workflows/ios_build.yml
 
   # linux-build:
   #   name: 🐧 Linux
-  #   uses: ./.github/workflows/linux_builds.yml
+  #   uses: ./.github/workflows/linux_build.yml
 
   # macos-build:
   #   name: 🍎 macOS
-  #   uses: ./.github/workflows/macos_builds.yml
+  #   uses: ./.github/workflows/macos_build.yml
 
   # web-build:
   #   name: 🌐 Web
-  #   uses: ./.github/workflows/web_builds.yml
+  #   uses: ./.github/workflows/web_build.yml
 
   release:
     name: 📦 Create Release
